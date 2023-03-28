@@ -1,5 +1,6 @@
 Django
 django-cors-headers
+django-environ
 celery
 channels-redis
 channels

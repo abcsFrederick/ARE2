@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 from pathlib import Path
+import environ
+
+
+env = environ.Env()
+environ.Env.read_env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -140,15 +145,15 @@ STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 GLOBAL_SETTINGS = {
-    'WORKSPACE': '/home/miaot2/ARE2/workspace',
+    'WORKSPACE': env('WORKSPACE'),
     # 'WORKSPACE': '/var/www/html/ARE2/workspace',
-    'HOSTDIR': '/var/www/html/ARE2/',
-    'BASEURL': 'https://fslspw-aprap01p.nih.gov/imageserver/',
-    'ARCHIVEBASE': '/is1/projects/phl_scanscope',
-    'OLDARCHIVE': 'archive/PHL/Aperio',
-    'NEWARCHIVE': 'static',
-    'SHARED_PARTITION': '/mnt/hpc/webdata/server/fr-s-ivg-histomics/ARE2',
-    'SCRIPT': 'Aperio_Extract_ROI.py'
+    'HOSTDIR': env('HOSTDIR'),
+    'BASEURL': env('BASEURL'),
+    'ARCHIVEBASE': env('ARCHIVEBASE'),
+    'OLDARCHIVE': env('OLDARCHIVE'),
+    'NEWARCHIVE': env('NEWARCHIVE'),
+    'SHARED_PARTITION': env('SHARED_PARTITION'),
+    'SCRIPT': env('SCRIPT'),
 }
 
 # Celery settings
