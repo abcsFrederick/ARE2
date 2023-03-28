@@ -1,0 +1,10 @@
+Django
+django-cors-headers
+celery
+channels-redis
+channels
+pycurl
+pillow
+openslide-python
+asgiref
+redis

@@ -1,0 +1,8 @@
+start.sh
+worker.sh
+workspace/
+__pycache__/
+*.py[cod]
+
+node_modules/
+db.sqlite3
