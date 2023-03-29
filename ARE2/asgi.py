@@ -8,18 +8,18 @@ https://docs.djangoproject.com/en/3.2/howto/deployment/asgi/
 """
 
 import os
-
 from django.core.asgi import get_asgi_application
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ARE2.settings')
+django_asgi_app = get_asgi_application()
+
 from channels.security.websocket import AllowedHostsOriginValidator
 from channels.auth import AuthMiddlewareStack
 from channels.routing import ProtocolTypeRouter, URLRouter
-
 import workflow1.routing
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'ARE2.settings')
-
 application = ProtocolTypeRouter({
-  "http": get_asgi_application(),
+  "http": django_asgi_app,
   "websocket": AllowedHostsOriginValidator(
         AuthMiddlewareStack(
             URLRouter(

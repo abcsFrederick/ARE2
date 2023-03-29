@@ -449,7 +449,7 @@ def start_processing(self, file_path, username, password, id):
     # thumbnailFolder = os.path.join(workFolder, 'output_s')
     # shutil.copytree(previewFolder, thumbnailFolder)
     # prepareJPGs(thumbnailFolder, statusFilePath, id, thumbnail=True)
-    # async_to_sync(channel_layer.group_send)(id, {'type': 'send_reports', 'text': 'Finish' })
+    async_to_sync(channel_layer.group_send)(id, {'type': 'send_reports', 'text': 'Finish' })
     Celery_task.objects.filter(taskId=id).update(link=zipFilePath.replace(settings.GLOBAL_SETTINGS['HOSTDIR'],''),
                                                  lineFileLink=lineFilePath.replace(settings.GLOBAL_SETTINGS['HOSTDIR'],''),
                                                  size=str(int(file_size)) + unit,
