@@ -51,9 +51,9 @@ from celery.result import AsyncResult
 import asyncio
 @csrf_exempt
 def test(request):
-    celery_id = request.GET.get("celery_id");
-    res = AsyncResult(celery_id)
-    return JsonResponse({'state': str(res.state)}, safe=False)
+    # celery_id = request.GET.get("celery_id");
+    # res = AsyncResult(celery_id)
+    return JsonResponse({'state': 'test'}, safe=False)
 
 
 

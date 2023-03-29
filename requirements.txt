@@ -9,3 +9,5 @@ pillow
 openslide-python
 asgiref
 redis
+gunicorn
+uvicorn
