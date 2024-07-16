@@ -1,0 +1,649 @@
+<?php
+
+session_start();
+  
+//echo phpinfo();
+
+function getSafeInputValue($input)
+{
+	$output = str_replace("\"", "", $input);
+  $output = trim(rtrim($output));
+  
+  if (strlen($output) > 0)
+  {
+		$targets = array(" ", "/", ":", "?", ">", "\\", "%", "|", "#", "*", ",", "(", ")");
+		
+		$output = str_replace($targets, "-", $output);
+	}
+  else
+    $output = "-";
+
+  return $output;
+}
+
+function getColIndex($name, $names)
+{
+	$size = count($names);
+	
+	for($index = 0; $index < $size; $index++)
+	{
+		$colName = $names[$index];
+		
+		$colName = str_replace('"', "", $colName);
+		$colName = trim(rtrim($colName));
+  
+		if ($name == $colName)
+			return $index;
+	}
+}
+
+function prepareInputs($lines, $outputFile, $username, $password, $workFolder, $statusFile)
+{
+  //first line is header
+  $header = array_shift($lines);
+  
+  $colNames = str_getcsv($header);
+  
+  //column names we are looking for
+  $colNameExtID = "Ext ID";
+  $colNameLoc = "File Location";
+  $colNameTissue = "Tissue";
+  $colNameTissueComment = "Tissue Comment";
+  $colNameProbe = "Tgt1";
+  $colNameProbe1 = "Tgt2";
+  $colNameProbe2 = "Tgt3";
+  $colNameImageID = "Image ID";
+  
+  //find out index for cols needed.
+  //do this because use may choose different columns to export
+  //below are columns we need
+  $colIndexExtID = getColIndex($colNameExtID, $colNames);
+  $colIndexLoc = getColIndex($colNameLoc, $colNames);
+  $colIndexTissue = getColIndex($colNameTissue, $colNames);
+  $colIndexTissueComment = getColIndex($colNameTissueComment, $colNames);
+  $colIndexProbe = getColIndex($colNameProbe, $colNames);
+  $colIndexProbe1 = getColIndex($colNameProbe1, $colNames);
+  $colIndexProbe2 = getColIndex($colNameProbe2, $colNames);
+  $colIndexImageID = getColIndex($colNameImageID, $colNames);
+  
+  if ($colIndexImageID <= 0 || $colIndexLoc <= 0)
+  {
+    fwrite($statusFile, "ERROR: No Image ID and/or File Location in the uploaded file!"." ".$colIndexImageID." ".$colIndexLoc."\n");
+    fflush($statusFile);
+    exit();
+  }
+	
+	$indexFile = fopen($outputFile, "w");
+	
+	if ($indexFile == FALSE)
+  {
+		fwrite($statusFile, "ERROR: Unable to create index file!\n");
+    fflush($statusFile);
+    exit();
+  }
+  
+  $tempArray = array();
+  
+  foreach ($lines as $line)
+  {
+	  $tokens = str_getcsv($line);
+	  
+	  //check if current line is valid
+	  if (count($tokens) < count($header) )
+			continue;
+	  
+	  if (empty($tokens[$colIndexLoc]))
+			continue;
+			
+	  $extID = "-";
+	  if ($colIndexExtID > 0)
+			$extID = getSafeInputValue($tokens[$colIndexExtID]);
+    
+    //-----------parse location-------
+    $loc = "-";
+	
+    $loc = str_replace("\\", "/", $tokens[$colIndexLoc]);
+    $loc = str_replace('"', "", $loc);
+    
+    $subTokens = explode("/", $loc);
+    $numSubTokens = count($subTokens);
+    
+    $archiveBase = "/is1/projects/phl_scanscope/";
+    $oldArchive = "archive/PHL/Aperio/";
+    $newArchive = "static/";
+    
+    $loc = $archiveBase;
+    
+    if (strpos($tokens[$colIndexLoc], "archive") !== false)
+			$loc .= $oldArchive;
+		else
+			$loc .= $newArchive;
+			
+		$loc .= $subTokens[$numSubTokens-2]."/".$subTokens[$numSubTokens-1];
+		//------------end parse location--------
+		
+		$tissue = "-";
+		$tissueComment = "-";
+		$probe = "-";
+		$imageID = "-";
+		
+		if ($colIndexTissue > 0)
+			$tissue = getSafeInputValue($tokens[$colIndexTissue]);
+		if ($colIndexTissueComment > 0)
+			$tissueComment = getSafeInputValue($tokens[$colIndexTissueComment]);
+		if ($colIndexProbe > 0)
+			$probe = getSafeInputValue($tokens[$colIndexProbe]);
+		if ($colIndexProbe1 > 0)
+		{
+			if (strcmp($probe, "-") == 0)
+				$probe = getSafeInputValue($tokens[$colIndexProbe1]);
+			else
+				$probe .= "-".getSafeInputValue($tokens[$colIndexProbe1]);
+		}
+		if ($colIndexProbe2 > 0)
+		{
+			if (strcmp($probe, "-") == 0)
+				$probe = getSafeInputValue($tokens[$colIndexProbe2]);
+			else
+				$probe .= "-".getSafeInputValue($tokens[$colIndexProbe2]);
+		}
+		if ($colIndexImageID > 0)
+			$imageID = getSafeInputValue($tokens[$colIndexImageID]);
+    
+    //create prefix1
+		$namePrefix1 = "";
+		
+		if ($extID != "-")
+			$namePrefix1 = $extID;
+		if ($tissue != "-")
+			$namePrefix1 .= "_".$tissue;
+		if ($tissueComment != "-")
+			$namePrefix1 .= "_".$tissueComment;
+		
+		//create prefix2
+    $namePrefix2 = "";
+    
+    if ($probe != "-")
+			$namePrefix2 = $probe;
+		if ($imageID != "-")
+			$namePrefix2 .=	"_".$imageID;
+		
+		//save to index file and get annotation
+		//only when we have valid imageID and location
+    if ($imageID != "-" && $tokens[$colIndexLoc] != "")
+    {
+			//get annotation
+			$ann = requestAnnotation($imageID, $username, $password);
+			
+			if (strpos($ann, "Invalid userid/password:") !== FALSE)
+			{
+				fclose($indexFile);
+				fwrite($statusFile, "ERROR: Invalid userid/password for Aperio ImageServer.\n");
+        fflush($statusFile);
+        exit();
+			}
+      
+      $lineString = $namePrefix1.",".$namePrefix2.",".$loc.",".$imageID."\n";
+      
+      if (in_array($lineString, $tempArray) == false)
+      {
+        array_push($tempArray, $lineString);
+        fwrite($indexFile, $lineString);	
+        file_put_contents($workFolder."/".$imageID.".xml", $ann);
+        fwrite($statusFile, "Annotation file downloaded for image ".$imageID."\n");
+        fflush($statusFile);
+      }
+		}
+  }
+  
+  fclose($indexFile);
+}
+
+function requestAnnotation($id, $username, $password)
+{
+//  $baseUrl = 'http://129.43.1.24/';
+//	$baseUrl = 'http://fr-s-lsp-spc-d/';
+  $baseUrl = 'http://129.43.165.161/';
+  
+  $curl_handle = curl_init();
+  curl_setopt($curl_handle, CURLOPT_URL, $baseUrl.'@'.$id.'?GETANNOTATIONS');
+  curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER, true);
+  curl_setopt($curl_handle, CURLOPT_USERPWD, $username.':'.$password);
+  curl_setopt($curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
+  $html = curl_exec($curl_handle);
+  
+  curl_close($curl_handle);
+
+  return $html;
+}
+
+function getNumOfROIs($path)
+{
+  $rois = 0;
+  
+  if ($handle = opendir($path))
+  {
+    while (false !== ($entry = readdir($handle)))
+    {
+      if ($entry != "." && $entry != "..")
+      {
+        if (is_dir($path."/".$entry))
+        {
+          $files = scandir($path."/".$entry);
+          $rois += count($files) - 2;
+        }
+      }
+    }
+    
+    closedir($handle);
+  }
+
+  return $rois;
+}
+
+function postProcess($path, $statusFile)
+{
+  fwrite($statusFile, "Embedding color profile...\n");
+  fflush($statusFile);
+  
+  if ($handle = opendir($path))
+  {
+    while (false !== ($entry = readdir($handle)))
+    {
+      if ($entry != "." && $entry != "..")
+      {
+        $folder = $path."/".$entry;
+        
+        if (is_dir($folder))
+        {
+          shell_exec("gm mogrify -profile profile.icc ".$folder."/*.tif");
+        }
+      }
+    }
+    
+    closedir($handle);
+  }
+}
+
+function getProcessTime($period)
+{
+  $minutes = 0;
+  $seconds = 0;
+      
+  if ($period > 60)
+    $minutes = intval($period / 60);
+      
+  $seconds = $period - $minutes * 60;
+
+  return $minutes." minutes ".$seconds. " seconds";
+}
+
+function prepareThumbnails($path, $statusFile)
+{
+  fwrite($statusFile, "Generating thumbnails...\n");
+  fflush($statusFile);
+  
+  if ($handle = opendir($path))
+  {
+    while (false !== ($entry = readdir($handle)))
+    {
+      if ($entry != "." && $entry != "..")
+      {
+        $folder = $path."/".$entry;
+        
+        if (is_dir($folder))
+        {
+          shell_exec("gm mogrify -resize 100x100 ".$folder."/*.jpg");
+        }
+      }
+    }
+    
+    closedir($handle);
+  }
+}
+
+function prepareJPGs($path, $statusFile)
+{
+  fwrite($statusFile, "Generating preview images...\n");
+  fflush($statusFile);
+  
+  if ($handle = opendir($path))
+  {
+    while (false !== ($entry = readdir($handle)))
+    {
+      if ($entry != "." && $entry != "..")
+      {
+        $folder = $path."/".$entry;
+        
+        if (is_dir($folder))
+        {
+          shell_exec("gm mogrify -resize 1024x1024\> -format jpg -quality 75 ".$folder."/*.tif");
+          shell_exec("rm -rf ".$folder."/*.tif");
+        }
+      }
+    }
+    
+    closedir($handle);
+  }
+}
+
+function parseXML($fileName)
+{
+  $annotations = simplexml_load_file($fileName);
+ 
+  $outputFileROI = fopen($fileName.".roi", "w");
+  $outputFileLine = fopen($fileName.".line", "w");
+    
+  $layerCount = 0;
+    
+  #each layer
+  foreach ($annotations->Annotation as $anno)
+  {
+    $layerCount ++;
+    $layerNameStr = "";
+    
+    foreach ($anno->Attributes->Attribute as $attr)
+    {
+      $name = (string)$attr['Name'];
+      $value = (string)$attr['Value'];
+        
+      if (!empty($value))
+        $layerNameStr = $value;
+      elseif (!empty($name) && strcmp($name, "Description") != 0)
+        $layerNameStr = $name;
+      else
+        $layerNameStr = (string)$layerCount;
+        
+      $layerNameStr = getSafeInputValue($layerNameStr);
+    }
+      
+    $lineAnno = array();
+    $roiAnno = array();
+      
+    #each region
+    foreach ($anno->Regions->Region as $region)
+    {
+      $type = (int)$region['Type'];
+        
+      #0: poly line
+      if ($type == 0)
+        array_push($lineAnno, (string)$region['LengthMicrons']);
+      elseif ($type == 1)#1: box
+      {
+        foreach ($region->Vertices as $roi)
+        {
+          $roiArray = array();
+          foreach ($roi->Vertex as $vertex)
+          {
+            array_push($roiArray, (string)$vertex['X']);
+            array_push($roiArray, (string)$vertex['Y']);
+          }
+            
+          array_push($roiAnno, $region['DisplayId'].",".implode(",", $roiArray));
+        }
+      }
+    }#end of region processing
+      
+    if (!empty($lineAnno))
+      fwrite($outputFileLine, $layerNameStr.",".implode(",", $lineAnno)."\n");
+      
+    foreach ($roiAnno as $roi)
+      fwrite($outputFileROI, $layerNameStr.",".$roi."\n");
+  }
+    
+  fclose($outputFileLine);
+  fclose($outputFileROI);
+}
+
+function processROIs($workFolder, $outputFolder, $statusFile)
+{
+  //load index.csv file
+  $indexCSV = fopen($workFolder."index.csv", "r");
+  
+  $reportFileName = $workFolder."result.csv";
+  
+  $reportFile = fopen($reportFileName, "w");
+  fputcsv($reportFile, array('ImageID', 'LayerName', 'ROIFile'));
+  fclose($reportFile);
+  
+  while(! feof($indexCSV))
+  {
+    $line = fgetcsv($indexCSV);
+    
+    $prefix = $line[0];
+    $postfix = $line[1];
+    $location = $line[2];
+    $imageID = $line[3];
+    
+    $annFile = $workFolder.$imageID.".xml";
+    
+    if (file_exists($annFile))
+    {
+      fwrite($statusFile, "Parsing annotation file for image ".$imageID."\n");
+      fflush($statusFile);
+      parseXML($annFile);
+      
+      if (filesize($annFile.".roi") != 0)
+      {
+        //create output folder for current image
+        $roiFolder = $outputFolder.$imageID;
+        
+        if (!file_exists($roiFolder))
+        {
+          exec("mkdir ".$roiFolder);
+        
+          $exec_name = "aux/Aperio_Extract_ROI";
+        
+          //process ROIs for current image
+          fwrite($statusFile, "Extracting ROIs on image ".$imageID."\n");
+          fflush($statusFile);
+          exec($exec_name." ".$annFile.".roi"." ".$roiFolder." ".$prefix." ".$postfix." ".$location." ".$reportFileName." ".$imageID." >> ".$workFolder."output.txt");
+        }
+      }
+    }
+  }
+  
+  fclose($indexCSV);
+}
+
+function processLines($workFolder, $statusFile)
+{
+  fwrite($statusFile, "Parsing LINE annotation information\n");
+  fflush($statusFile);
+  
+  //load index.csv file
+  $indexCSV = fopen($workFolder."index.csv", "r");
+
+  $lineAnnArray = array();
+  
+  while(! feof($indexCSV))
+  {
+    $line = fgetcsv($indexCSV);
+    
+    $prefix = $line[0];
+    $postfix = $line[1];
+    $location = $line[2];
+    $imageID = $line[3];
+    
+    $annFile = $workFolder.$imageID.".xml".".line";
+    
+    if (file_exists($annFile) && filesize($annFile) != 0)
+    {
+      $lines = fopen($annFile, "r");
+      
+      while (! feof($lines))
+      {
+        $annArray = array($prefix."_".$postfix);
+        
+        $ann = fgetcsv($lines);
+        
+        if (count($ann) > 1)
+        {
+          foreach ($ann as $token)
+            array_push($annArray, $token);
+          
+          array_push($lineAnnArray, $annArray);
+        }
+      }
+      
+      fclose($lines);
+    }
+  }
+  
+  fclose($indexCSV);
+
+  if (count($lineAnnArray) > 0)
+  {
+    $lineAnn = fopen($workFolder."lineAnn.csv", "w");
+    
+    fwrite($lineAnn, "Annotation line length data\n\n");
+    fwrite($lineAnn, "Specimen,Layer,Total Length(um)\n");
+    
+    foreach ($lineAnnArray as $line)
+    {
+      $total = 0;
+      for ($i = 2; $i < count($line); ++$i)
+        $total += floatval($line[$i]);
+        
+      $newArray = array($line[0], $line[1], $total);
+      fputcsv($lineAnn, $newArray);
+    }
+    
+    fwrite($lineAnn, "\nSpecimen,Layer,Total Length(um)\n");
+    
+    foreach($lineAnnArray as $line)
+    {
+      fputcsv($lineAnn, $line);
+    }
+    
+    fclose($lineAnn);
+  }
+}
+
+
+function process()
+{
+	$id = $_SESSION['id'];
+  	
+  $workFolder = "workspace/".$id."/";
+
+  $statusFile = fopen($workFolder."status.txt", "w");
+  fwrite($statusFile, "Processing...\n");
+  fflush($statusFile);
+    
+  $lines = file($_SESSION['csvFile'], FILE_IGNORE_NEW_LINES|FILE_SKIP_EMPTY_LINES);
+  
+  $indexFile = $workFolder."index.csv";
+
+  //query Spectrum database for annotations
+  prepareInputs($lines, $indexFile, $_SESSION['username'], $_SESSION['password'], $workFolder, $statusFile);
+
+  $outputFolder = $workFolder."output/";
+  exec("mkdir ".$outputFolder);
+  
+//  $exec_name = "aux/Aperio_Extract_ROI_xml";
+  
+  $startTime = time();
+  
+  //process all ROIs
+  //exec($exec_name." ".$workFolder." ".$outputFolder." >> ".$workFolder."output.txt");
+  processROIs($workFolder, $outputFolder, $statusFile);
+  processLines($workFolder, $statusFile);
+  
+  //LZW zip (can not be done in ITK)
+  //embeded color profile
+  postProcess($outputFolder, $statusFile);
+  
+  $endTime = time();
+  
+  $timeStamp = date('Y-m-d_h-i_a', time());
+  
+  //copy to nfs mount
+  $path_parts = pathinfo($_SESSION["csvFile"]);
+  $identifier = getSafeInputValue($path_parts['filename']);
+
+//  $nfsMount = "nfsMount/";
+//  $remoteFolder = $identifier."_".$timeStamp;
+  
+  /*copy output folder*/
+//  exec("cp -R ".$outputFolder." ".$nfsMount.$remoteFolder);
+//  exec("chmod -R 777 ".$nfsMount.$remoteFolder);
+  /*end of copying output folder*/
+  
+  $zipFile = $identifier."_ROIs_".$timeStamp.".zip";
+  exec("cd ".$outputFolder."; "." zip -r -0 ../".$zipFile." .; cd ../../../");
+  
+  $zipFile = $workFolder.$zipFile;
+    
+  $fs = filesize($zipFile) / (1024*1024);
+  $unit = "MB";
+    
+  if ($fs < 0.001)
+  {
+    $fs = filesize($zipFile) / 1024;
+    $unit = "KB";
+  }
+    
+  $processTime = getProcessTime($endTime - $startTime + 1);
+  $numROIs = getNumOfROIs($outputFolder);
+  
+  $lines = file($workFolder."index.csv", FILE_IGNORE_NEW_LINES);
+  $numImages = sizeof($lines);
+  
+  //write log file
+  {
+    $logFile = fopen("log/access.txt","a") or exit("Unable to open log file!");
+      
+    while(!flock($logFile, LOCK_EX))
+    {
+      sleep(mt_rand(1,10));
+    }
+    
+    $date = date('m/d/Y h:i:s a', time());
+    
+    fwrite($logFile, $numImages.",".$numROIs.",".$date.",".$processTime.",".$_SERVER['REMOTE_ADDR']."\n");
+      
+    fflush($logFile);
+    flock($logFile, LOCK_UN);
+      
+    fclose($logFile);
+  }
+  
+  $thumbStartTime = time();
+  
+  $previewFolder = $workFolder."output_p/";
+  exec("cp -r ".$outputFolder." ".$previewFolder);
+  
+  prepareJPGs($previewFolder, $statusFile);
+  
+  $thumbnailFolder = $workFolder."output_s/";
+  exec("cp -r ".$previewFolder." ".$thumbnailFolder);
+  
+  prepareThumbnails($thumbnailFolder, $statusFile);
+  
+  fclose($statusFile);
+  
+  $thumbEndTime = time();
+    
+  $thumbProcessTime = getProcessTime($thumbEndTime - $thumbStartTime + 1);
+  
+  //20170606 omit downloand link if number of extracted ROIs equals 0
+  $downloadLink = ' ';
+  if (count(file($workFolder."result.csv")) > 1)
+    $downloadLink = sprintf("<a href='".$zipFile."' class='btn btn-primary btn-xs'>Download ROIs (%.2f %s)</a>", $fs, $unit);
+  
+  $lineAnnFile = $workFolder.$identifier."_LineAnnotations_".$timeStamp.".csv";
+  
+  //20170411 rename original lineAnn.csv
+  exec("mv ".$workFolder."lineAnn.csv"." ".$lineAnnFile);
+  
+  $lineAnnDownloadLink = ' ';
+  if (file_exists($lineAnnFile))
+		$lineAnnDownloadLink = "<a href='".$lineAnnFile."' class='btn btn-primary btn-xs'>Download Line Annotations</a>";
+  
+  echo $numROIs." ROIs extracted in ".$processTime.",".$downloadLink.",".$lineAnnDownloadLink;
+}
+
+process();
+
+?>

@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import csv
+import math
+import os.path
+import os
+
+from PIL import Image, ImagePath
+from PIL import TiffImagePlugin, TiffTags
+from PIL import ImageDraw
+# HACK
+TiffTags.LIBTIFF_CORE.add(TiffImagePlugin.IMAGEDESCRIPTION)
+
+import openslide
+
+
+#import numpy
+#from skimage.draw import polygon
+
+
+def cropROI(slide, location, size, description, output_path, path):
+    print('reading ROI...')
+    image = slide.read_region(location, 0, size)
+    print('writing...')
+
+#    flat_path = path.tolist(True)
+#    rr, cc = polygon(flat_path[1::2], flat_path[0::2])
+#    mask = numpy.full((size[1], size[0]), 255, dtype=numpy.uint8)
+#    mask[rr, cc] = 0
+#    mask = Image.fromarray(mask, 'L')
+
+    mask = Image.new('1', size, color=1)
+    ImageDraw.Draw(mask).polygon(path, fill=0)
+
+#    image.paste(Image.new('RGB', size), mask=mask)
+# white background
+    image.paste(Image.new('RGB', size, color=(255, 255, 255)), mask=mask)
+
+    image.convert('RGB').save(output_path, compression='tiff_lzw',
+                              description=description)
+
+
+def process_single_image(in_file, prefix, postfix, output_folder, svs_path,
+                         report_file, image_id):
+
+    print(os.stat(svs_path))
+
+    try:
+        slide = openslide.OpenSlide(svs_path)
+    except openslide.OpenSlideError:
+        print('OpenSlide cannot open ' + svs_path);
+        return
+
+    description = slide.properties[openslide.PROPERTY_NAME_COMMENT]
+    print(slide.properties[openslide.PROPERTY_NAME_VENDOR])
+
+    for roi in csv.reader(in_file):
+        layer_name = roi[0]
+        roi_index = int(roi[1])
+        path = ImagePath.Path(list(zip(list(map(float, roi[2::2])),
+                                       list(map(float, roi[3::2])))))
+
+        bounding_box = path.getbbox()
+        bounding_box = tuple(map(lambda n: int(math.floor(n)), bounding_box))
+        size = (bounding_box[2] - bounding_box[0] + 1,
+                bounding_box[3] - bounding_box[1] + 1)
+        path.transform((1, 0, -bounding_box[0], 0, 1, -bounding_box[1]))
+
+        print_args = (layer_name,) + size + bounding_box
+        print('%s %dx%d (%d, %d) (%d, %d)' % print_args)
+
+        roi_name =  '%s_%s_%s_%02d.tif' % (prefix, layer_name, postfix,
+                                            roi_index) 
+        report_file.write('%s,%s,%s\n' % (image_id, layer_name, roi_name))
+
+        cropROI(slide, bounding_box[:2], size, description,
+                os.path.join(output_folder, roi_name), path)
+
+    slide.close()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('ROI_Index_File')
+    parser.add_argument('Output_Folder')
+    parser.add_argument('Prefix')
+    parser.add_argument('Postfix')
+    parser.add_argument('SVS_Path')
+    parser.add_argument('Report_File')
+    parser.add_argument('ImageID')
+
+    args = parser.parse_args()
+
+    print()
+    print("Processing " + args.ROI_Index_File)
+
+    with open(args.ROI_Index_File) as roi_file, open(args.Report_File, 'a+') as report_file:
+        process_single_image(roi_file, args.Prefix, args.Postfix,
+                             args.Output_Folder, args.SVS_Path, report_file,
+                             args.ImageID)
+
+    print("Done")

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Aperio Image ROI Extraction - IVG - ABCC - ISP - Leidos Biomed</title>
+    <link href="bootstrap/css/bootstrap.css" rel="stylesheet">
+    <script type="text/javascript" src="d3/d3.js"></script>
+    <script src="jquery/jquery-1.9.1.min.js"></script>
+    <style>
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.line {
+  fill: none;
+  stroke: orange;
+  stroke-width: 1.5px;
+}
+
+.overlay {
+  fill:none;
+  pointer-events:all;
+}
+		
+.focus circle{
+	fill:none;
+	stroke:red;
+  stroke-width: 1.5px;
+}
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row"><div class="span12"><h1>Aperio Image ROI Extraction Workflow (beta)</h1></div></div>
+      <div class="row"><div class="span12"><h4>Imaging and Visualization Group<br>Advanced Biomedical Computing Center</h4></div></div>
+      <hr class="featurette-divider">
+      <div class="row"><div class="span12"><h2>Number of ROIs extracted since May 2012</h2></div></div>
+      <div class="row"><div class="span4">Mouse over the chart to see exact numbers.</div></div>
+      <div class="row"><div class="span3"><strong>Total Extraction:</strong></div><div class="span1" id="total"></div></div>
+      <div class="row"><div class="span3"><strong>Last Extraction Time:</strong></div><div class="span4" id="lastDate"></div></div>
+      <div class="row"><div class="span3"><strong>Current Data Point:</strong></div><div class="span4" id="value"></div></div>
+      <div class="row"><div class="span12" id="canvas"></div></div>
+      <div class="row"><div class="span12"><a class="btn" href="index.html">Back</a></div></div>
+    </div>
+    <script>
+      var margin = {top: 40, right: 40, bottom: 90, left: 40};
+      var width = $("#canvas").width() - margin.left - margin.right;
+      var height = 350  - margin.top - margin.bottom;
+
+      var parseDate = d3.time.format("%m-%d-%Y").parse,
+          bisectDate = d3.bisector(function(d){ return d.date }).left,
+          formatValue = d3.format(","),
+          formatROIs = function(d){ return formatValue(d);};
+      
+      var x = d3.time.scale()
+          .range([0, width]);
+
+      var y = d3.scale.linear()
+          .range([height, 0]);
+      
+      var y1 = d3.scale.linear()
+          .range([height, 0]);
+          
+      var xAxis = d3.svg.axis()
+          .scale(x)
+          .ticks(12)
+          .orient("bottom");
+
+      var yAxis = d3.svg.axis()
+          .scale(y)
+          .tickFormat(function(d){return (d / 1000);})
+          .orient("left");
+      
+      var yAxisRight = d3.svg.axis()
+          .scale(y1)
+          .tickFormat(function(d){return (d / 1000);})
+          .orient("right");
+          
+      var line = d3.svg.line()
+          .x(function(d) { return x(d.date); })
+          .y(function(d) { return y(d.numROIs); });
+
+      var svg = d3.select("#canvas").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      
+      function mergeLines(data)
+      {
+        var output = new Array;
+
+        for (var s = 0; s < data.length; )
+        {
+          var key = data[s].date;
+          var sum = 0;
+          
+          for (var i = s; i < data.length; i++)
+          {
+            if (data[i].date === key)
+            {
+              sum += data[i].numROIs;
+              
+              if (i + 1 == data.length)
+              {
+                s = i + 1;
+                break;
+              }
+            }
+            else
+            {
+              s = i;
+              break;
+            }
+          }
+          
+          output.push({"date": key, "numROIs": sum});
+        }
+
+        return output;
+      }
+
+      d3.csv("log/access.txt", function(error, data) {
+        
+        document.getElementById("lastDate").innerHTML = data[data.length - 1].date;
+        
+        data.forEach(function(d) {
+          var str = d.date;
+          d.date = str.replace(/\//g, "-").slice(0,10);
+          d.numROIs = +d.numROIs;
+        });
+        
+        var newData = mergeLines(data);
+        var newBarData = mergeLines(data);//get a copy
+        
+        var sum = 0;
+        
+        newData.forEach(function(d) {
+          d.date = parseDate(d.date);
+          sum += d.numROIs;
+          d.numROIs = sum;
+        });
+        
+        newBarData.forEach(function(d) {
+          d.date = parseDate(d.date);
+        });
+        
+        document.getElementById("total").innerHTML = formatROIs(sum);
+        
+        x.domain(d3.extent(newData, function(d) { return d.date; }));
+        y.domain(d3.extent(newData, function(d) { return d.numROIs; }));
+        y1.domain(d3.extent(newBarData, function(d) { return d.numROIs; }));
+        
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(xAxis)
+            .selectAll("text")
+              .style("text-anchor", "end")
+              .attr("dx", "-.50em")
+              .attr("dy", ".1em")
+              .attr("transform", function(d){return "rotate(-45)"});
+
+        svg.append("g")
+            .attr("class", "y axis")
+            .call(yAxis)
+          .append("text")
+           // .attr("transform", "rotate(-90)")
+						.attr("x", 8)
+            .attr("y", -20)
+            .attr("dy", ".71em")
+            .style("text-anchor", "middle")
+            .text("Total (x1000)")
+            .style("fill", "orange")
+            .style("font-weight", "bold");
+           // .style("opacity", "0.65");
+        
+        svg.append("g")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + width + ",0)")
+            .call(yAxisRight)
+          .append("text")
+           // .attr("transform", "rotate(-90)")
+						.attr("x", -8)
+            .attr("y", -20)
+            .attr("dy", ".71em")
+            .style("text-anchor", "middle")
+            .text("Daily (x1000)")
+            .style("fill", "skyblue" )
+            .style("font-weight", "bold");
+           // .style("opacity", "0.65");
+
+        svg.selectAll("rect")
+            .data(newBarData)
+          .enter()
+            .append("rect")
+            .attr("x", function(d){return Math.floor(x(d.date));})
+            .attr("y", function(d){return y1(d.numROIs);})
+            .attr("width", 1.5)
+            .attr("height", function(d){return height - y1(d.numROIs) - 1;})
+            .attr("fill", "skyblue");
+            
+        svg.append("path")
+            .datum(newData)
+            .attr("class", "line")
+            .attr("d", line);
+            
+        var focus = svg.append("g")
+                    .attr("class","focus")
+                    .style("display", "none");
+      
+        focus.append("circle")
+            .attr("r",4.5);
+      
+        focus.append("text")
+            .attr("x",9)
+            .attr("dy",".35em");
+      
+        svg.append("rect")
+          .attr("class","overlay")
+          .attr("width", width)
+          .attr("height",height)
+          .on("mouseover",function() { focus.style("display",null);})
+          .on("mouseout", function() { focus.style("display","none");})
+          .on("mousemove", mousemove);
+      
+        function mousemove()
+        {
+          var x0 = x.invert(d3.mouse(this)[0]),
+          i = bisectDate(newData,x0,1),
+          d0 = newData[i-1],
+          d1 = newData[i],
+          d = x0 - d0.date > d1.date - x0 ? d1 : d0; 
+          
+          var dd0 = newBarData[i-1],
+          dd1 = newBarData[i],
+          dd = x0 - dd0.date > dd1.date - x0 ? dd1 : dd0; 
+          
+          focus.attr("transform","translate (" + x(d.date) + "," + y(d.numROIs) + ")");
+          
+          document.getElementById("value").innerHTML = formatROIs( d.numROIs) + ", Daily: " + formatROIs(dd.numROIs);
+        }
+      });
+    </script>
+  </body>
+</html>

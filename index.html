@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="../../favicon.ico">
+
+    <title>Aperio Image ROI Extraction - IVG - ABCS - DSITP - Leidos Biomed</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="bootstrap/css/bootstrap.css" rel="stylesheet">
+
+    <!-- Custom styles -->
+    <link href="bootstrap/css/sticky-footer-navbar.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+	<style>
+	<!-- Custom styles -->
+	.btn-file {
+	  position: relative;
+	  overflow: hidden;
+	}
+	.btn-file input[type=file] {
+	  position: absolute;
+	  top: 0;
+	  right: 0;
+	  min-width: 100%;
+	  min-height: 100%;
+	  font-size: 100px;
+	  text-align: right;
+	  filter: alpha(opacity=0);
+	  opacity: 0;
+	  background: red;
+	  cursor: inherit;
+	  display: block;
+	}
+	input[type=file] {
+		height: 39px;
+	}
+	input[readonly] {
+	  background-color: white !important;
+	  cursor: text !important;
+	}
+	.axis path,
+	.axis line {
+	  fill: none;
+	  stroke: #000;
+	  shape-rendering: crispEdges;
+	}
+
+	.line {
+	  fill: none;
+	  stroke: orange;
+	  stroke-width: 1.5px;
+	}
+
+	.overlay {
+	  fill:none;
+	  pointer-events:all;
+	}
+			
+	.focus circle{
+		fill:none;
+		stroke:red;
+	  stroke-width: 1.5px;
+	}
+	.modal-dialog.large {
+		width: 1150px;
+	}
+	#canvas {
+		margin-left: 20px;
+	}
+	.table.chart {
+		width: 500px;
+	}
+    .page-header {
+        margin-top: 20px;
+    }
+	</style>
+  </head>
+
+  <body>
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="#">Aperio Image ROI Extraction Workflow</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+            <li class="active"><a href="#">Home</a></li>
+			<li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Actions <span class="caret"></span></a>
+              <ul class="dropdown-menu">
+                <li><a href="#" data-toggle="modal" data-target="#workflowOne">Workflow One</a></li>
+                <li><a href="#" data-toggle="modal" data-target="#workflowTwo">Workflow Two</a></li>
+                <li role="separator" class="divider"></li>
+                <li class="dropdown-header">Statistics</li>
+                <li><a href="#" data-toggle="modal" data-target="#stats">View ROI Stats</a></li>
+              </ul>
+            </li>
+            <li><a href="mailto:miaot2@nih.gov?Subject=Aperio%20Workflow">Contact</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </nav>
+
+    <!-- Begin page content -->
+    <div class="container">
+		<div class="page-header">
+			<h3>Imaging and Visualization Group<br>Advanced Biomedical Computing Center</h3>
+		</div>
+		<div class="row">
+			<div class="col-md-8">
+				<h4>Description</h4>
+				<p>This website extracts sub-images defined on Aperio SVS images and saves these sub-images to separate TIFF image files for downloading. Please read the instructions below and then select the appropriate workflow.</p>
+				<h4>Instructions</h4>
+				<p>For optimum performance, please use Google Chrome or Mozilla Firefox to display the web site.</p>
+				<h4>There are currently two ways to download ROIs:</h4>
+				<div class="well well-sm">
+					<h4><a href="#" data-toggle="modal" data-target="#workflowOne"><span class="glyphicon glyphicon-upload" aria-hidden="true"></span> Workflow One: Upload Index File (CSV)</a></h4>
+					<p>The first way uploads slide data as a list. To use it, navigate to the desired slides in the Spectrum database. Then, select the slides you want and click "Export Data". Next, select "Comma Delimiter" (the default),  click export, and the slide information will be saved on your computer as a CSV file. Then upload the CSV file to the new extraction website using workflow #1.</p>
+					<p>About the CSV file, External IDs, Tissue, Tissue Comments, etc. can be edited as needed, and additional information can be added below the slide data. Please do not edit the column titles in row one; the web site needs them. Blank cells will be ignored,  with two exceptions: if a slide’s image ID or file location are missing then the slide will be skipped.</p>
+				</div>
+				<div class="well well-sm">
+					<h4><a href="#" data-toggle="modal" data-target="#workflowTwo"><span class="glyphicon glyphicon-th-list" aria-hidden="true"></span> Workflow Two: Manual Input(s)</a></h4>
+					<p>The second way requires manual typing in slide information but annotations are retrieved directly from the Spectrum database.</p>
+				</div>
+			</div>
+			<div class="col-md-4">
+				<div class="well well-lg">
+					<p class="lead">Select Workflow:</p>
+					<button type="button" class="btn btn-primary btn-lg btn-block" data-toggle="modal" data-target="#workflowOne"><span class="glyphicon glyphicon-upload" aria-hidden="true"></span> Workflow One</button>
+					<button type="button" class="btn btn-primary btn-lg btn-block" data-toggle="modal" data-target="#workflowTwo"><span class="glyphicon glyphicon-th-list" aria-hidden="true"></span> Workflow Two</button>
+				</div>
+				<div class="well well-lg">
+					<p class="lead">ROI Extraction Statistics:</p>
+					<button type="button" class="btn btn-primary btn-lg btn-block" data-toggle="modal" data-target="#stats"><span class="glyphicon glyphicon-stats" aria-hidden="true"></span> View Statistics</button>
+				</div>
+			</div>
+			<!-- Workflow One Modal -->
+			<div class="modal fade" id="workflowOne" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+			  <div class="modal-dialog" role="document">
+				<div class="modal-content">
+				  <div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title" id="myModalLabel">Workflow One: Upload Index File (CSV)</h4>
+				  </div>
+				  <div class="modal-body">
+					<form class="form-horizontal" name='workflow1' action='workflow1.php' onsubmit="return validateForm1()" method='post' enctype="multipart/form-data">
+					  <fieldset>
+						<div class="form-group">
+							<label for="file" class="col-lg-2 control-label">Spectrum Exported Index file (CSV):</label>
+							<div class="col-lg-10">
+								<div class="input-group">
+									<span class="input-group-btn">
+										<span class="btn btn-primary btn-file">Browse...<input type='file' id='file' name='file' accept='text/csv'></span>
+									</span>
+									<input type="text" class="form-control" readonly>
+								</div>
+							</div>
+						</div>
+						<div class="form-group">
+						  <label for="username" class="col-lg-2 control-label">Spectrum Username:</label>
+						  <div class="col-lg-6">
+							<input type="text" class="form-control" id="username" name="username" placeholder="Username">
+						  </div>
+						</div>
+						<div class="form-group">
+						  <label for="password" class="col-lg-2 control-label">Spectrum Password:</label>
+						  <div class="col-lg-6">
+							<input type="password" class="form-control" id="password" name="password" autocomplete="off" placeholder="Password">
+						  </div>
+						</div>
+						<div class="form-group">
+						  <div class="col-lg-10 col-lg-offset-2">
+							<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+							<button type="reset" class="btn btn-default">Clear Form</button>
+							<button type="submit" class="btn btn-primary">Submit</button>
+						  </div>
+						</div>
+					  </fieldset>
+					</form>
+					<div id="error"></div>
+				  </div>
+				</div>
+			  </div>
+			</div>
+			<!-- Workflow Two Modal -->
+			<div class="modal fade" id="workflowTwo" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+			  <div class="modal-dialog" role="document">
+				<div class="modal-content">
+				  <div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title" id="myModalLabel">Workflow Two: Manual Input(s)</h4>
+				  </div>
+				  <div class="modal-body">
+				  <form class="form-horizontal" name='workflow2' action='workflow2.php' method='post' target='_blank' onsubmit="return validateForm2()" enctype="multipart/form-data">
+					  <fieldset>
+						<div class="container-fluid">
+							<div class="row">
+								<div class="col-md-4"><input type="text" class="form-control" id="tissue" name="tissue" placeholder="Tissue Type"></div>
+								<div class="col-md-4"><input type="text" class="form-control" id="stain" name="stain" placeholder="Stain"></div>
+								<div class="col-md-3"><button type="reset" class="btn btn-default">Clear Form</button></div>
+							</div>
+						
+							<br />
+							<table class="table table-striped" id="table"></table>
+						
+							<div class="form-group">
+							  <label for="inputUsername" class="col-lg-2 control-label">Spectrum Username:</label>
+							  <div class="col-lg-6">
+								<input type="text" class="form-control" id="usernameManual" name="usernameManual" placeholder="Username">
+							  </div>
+							</div>
+							<div class="form-group">
+							  <label for="inputPassword" class="col-lg-2 control-label">Spectrum Password:</label>
+							  <div class="col-lg-6">
+								<input type="password" class="form-control" id="passwordManual" name="passwordManual" placeholder="Password">
+							  </div>
+							</div>
+							<div class="form-group">
+							  <div class="col-lg-10 col-lg-offset-2">
+								<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+								<button type="reset" class="btn btn-default">Clear Form</button>
+								<button type="submit" class="btn btn-primary">Submit</button>
+							  </div>
+							</div>
+							
+						</div>
+					  </fieldset>
+					</form>
+					<div id="error2"></div>
+				  </div>
+				</div>
+			  </div>
+			</div>
+			<!-- ROI Stats Modal -->
+			<div class="modal fade" id="stats" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+			  <div class="modal-dialog large" role="document">
+				<div class="modal-content">
+				  <div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title" id="myModalLabel">Number of ROIs extracted since May 2012</h4>
+				  </div>
+				  <div class="modal-body">
+					<h4>Mouse over the chart to see exact numbers.</h4>
+					<table class="table table-striped table-hover chart">
+					  <thead>
+						<tr>
+						  <th>Total Extraction</th>
+						  <th>Last Extraction Time</th>
+						  <th>Current Data Point</th>
+						</tr>
+					  </thead>
+					  <tbody>
+						<tr>
+						  <td><div class="span1" id="total"></div></td>
+						  <td><div class="span1" id="lastDate"></div></td>
+						  <td><div class="span1" id="value"></div></td>
+						</tr>
+					  </tbody>
+					</table>
+					<div class="row"><div class="span12" id="canvas"></div></div>
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+				  </div>
+				</div>
+			  </div>
+			</div>
+		</div>
+	</div>
+	<!-- Sticky Footer -->
+    <footer class="footer">
+      <div class="container">
+        <p class="text-muted">BETA Version - IVG - ABCS - DSITP - Leidos Biomed - <a href="mailto:miaot2@nih.gov?Subject=Aperio%20Workflow" target="_top">Contact: Tianyi Miao @ ABCS.</a></p>
+      </div>
+    </footer>
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="bootstrap/js/bootstrap.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="bootstrap/js/ie10-viewport-bug-workaround.js"></script>
+	<script type="text/javascript" src="d3/d3.js"></script>
+	<script>
+	$(document).on('change', '.btn-file :file', function() {
+	  var input = $(this),
+		  numFiles = input.get(0).files ? input.get(0).files.length : 1,
+		  label = input.val().replace(/\\/g, '/').replace(/.*\//, '');
+	  input.trigger('fileselect', [numFiles, label]);
+	});
+
+	$(document).ready( function() {
+		$('.btn-file :file').on('fileselect', function(event, numFiles, label) {
+			
+			var input = $(this).parents('.input-group').find(':text'),
+				log = numFiles > 1 ? numFiles + ' files selected' : label;
+			
+			if( input.length ) {
+				input.val(log);
+			} else {
+				if( log ) alert(log);
+			}
+			
+		});
+	});
+	 var margin = {top: 40, right: 40, bottom: 90, left: 40};
+      var width = 1000;
+      var height = 350  - margin.top - margin.bottom;
+
+      var parseDate = d3.time.format("%m-%d-%Y").parse,
+          bisectDate = d3.bisector(function(d){ return d.date }).left,
+          formatValue = d3.format(","),
+          formatROIs = function(d){ return formatValue(d);};
+      
+      var x = d3.time.scale()
+          .range([0, width]);
+
+      var y = d3.scale.linear()
+          .range([height, 0]);
+      
+      var y1 = d3.scale.linear()
+          .range([height, 0]);
+          
+      var xAxis = d3.svg.axis()
+          .scale(x)
+          .ticks(12)
+          .orient("bottom");
+
+      var yAxis = d3.svg.axis()
+          .scale(y)
+          .tickFormat(function(d){return (d / 1000);})
+          .orient("left");
+      
+      var yAxisRight = d3.svg.axis()
+          .scale(y1)
+          .tickFormat(function(d){return (d / 1000);})
+          .orient("right");
+          
+      var line = d3.svg.line()
+          .x(function(d) { return x(d.date); })
+          .y(function(d) { return y(d.numROIs); });
+
+      var svg = d3.select("#canvas").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      
+      function mergeLines(data)
+      {
+        var output = new Array;
+
+        for (var s = 0; s < data.length; )
+        {
+          var key = data[s].date;
+          var sum = 0;
+          
+          for (var i = s; i < data.length; i++)
+          {
+            if (data[i].date === key)
+            {
+              sum += data[i].numROIs;
+              
+              if (i + 1 == data.length)
+              {
+                s = i + 1;
+                break;
+              }
+            }
+            else
+            {
+              s = i;
+              break;
+            }
+          }
+          
+          output.push({"date": key, "numROIs": sum});
+        }
+
+        return output;
+      }
+
+      d3.csv("log/access.txt", function(error, data) {
+        
+        document.getElementById("lastDate").innerHTML = data[data.length - 1].date;
+        
+        data.forEach(function(d) {
+          var str = d.date;
+          d.date = str.replace(/\//g, "-").slice(0,10);
+          d.numROIs = +d.numROIs;
+        });
+        
+        var newData = mergeLines(data);
+        var newBarData = mergeLines(data);//get a copy
+        
+        var sum = 0;
+        
+        newData.forEach(function(d) {
+          d.date = parseDate(d.date);
+          sum += d.numROIs;
+          d.numROIs = sum;
+        });
+        
+        newBarData.forEach(function(d) {
+          d.date = parseDate(d.date);
+        });
+        
+        document.getElementById("total").innerHTML = formatROIs(sum);
+        
+        x.domain(d3.extent(newData, function(d) { return d.date; }));
+        y.domain(d3.extent(newData, function(d) { return d.numROIs; }));
+        y1.domain(d3.extent(newBarData, function(d) { return d.numROIs; }));
+        
+        svg.append("g")
+            .attr("class", "x axis")
+            .attr("transform", "translate(0," + height + ")")
+            .call(xAxis)
+            .selectAll("text")
+              .style("text-anchor", "end")
+              .attr("dx", "-.50em")
+              .attr("dy", ".1em")
+              .attr("transform", function(d){return "rotate(-45)"});
+
+        svg.append("g")
+            .attr("class", "y axis")
+            .call(yAxis)
+          .append("text")
+           // .attr("transform", "rotate(-90)")
+						.attr("x", 8)
+            .attr("y", -20)
+            .attr("dy", ".71em")
+            .style("text-anchor", "middle")
+            .text("Total (x1000)")
+            .style("fill", "orange")
+            .style("font-weight", "bold");
+           // .style("opacity", "0.65");
+        
+        svg.append("g")
+            .attr("class", "y axis")
+            .attr("transform", "translate(" + width + ",0)")
+            .call(yAxisRight)
+          .append("text")
+           // .attr("transform", "rotate(-90)")
+						.attr("x", -8)
+            .attr("y", -20)
+            .attr("dy", ".71em")
+            .style("text-anchor", "middle")
+            .text("Daily (x1000)")
+            .style("fill", "skyblue" )
+            .style("font-weight", "bold");
+           // .style("opacity", "0.65");
+
+        svg.selectAll("rect")
+            .data(newBarData)
+          .enter()
+            .append("rect")
+            .attr("x", function(d){return Math.floor(x(d.date));})
+            .attr("y", function(d){return y1(d.numROIs);})
+            .attr("width", 1.5)
+            .attr("height", function(d){return height - y1(d.numROIs) - 1;})
+            .attr("fill", "skyblue");
+            
+        svg.append("path")
+            .datum(newData)
+            .attr("class", "line")
+            .attr("d", line);
+            
+        var focus = svg.append("g")
+                    .attr("class","focus")
+                    .style("display", "none");
+      
+        focus.append("circle")
+            .attr("r",4.5);
+      
+        focus.append("text")
+            .attr("x",9)
+            .attr("dy",".35em");
+      
+        svg.append("rect")
+          .attr("class","overlay")
+          .attr("width", width)
+          .attr("height",height)
+          .on("mouseover",function() { focus.style("display",null);})
+          .on("mouseout", function() { focus.style("display","none");})
+          .on("mousemove", mousemove);
+      
+        function mousemove()
+        {
+          var x0 = x.invert(d3.mouse(this)[0]),
+          i = bisectDate(newData,x0,1),
+          d0 = newData[i-1],
+          d1 = newData[i],
+          d = x0 - d0.date > d1.date - x0 ? d1 : d0; 
+          
+          var dd0 = newBarData[i-1],
+          dd1 = newBarData[i],
+          dd = x0 - dd0.date > dd1.date - x0 ? dd1 : dd0; 
+          
+          focus.attr("transform","translate (" + x(d.date) + "," + y(d.numROIs) + ")");
+          
+          document.getElementById("value").innerHTML = formatROIs( d.numROIs) + ", Daily: " + formatROIs(dd.numROIs);
+        }
+      });
+		var totalLines = 8;
+		function createTable()
+		{
+		  var message = "<tr><th>No.</th><th>Spectrum SVS File Link</th><th>Specimen ID/External ID</th></tr>";
+		  
+		  for (var i = 1; i <= totalLines; i++)
+		  {
+			message += "<tr><td>" + i + "</td><td><input id='link" + i + "' type='text' class='form-control' name='link" + i + "'></td><td><input id='extID" + i + "' name='extID" + i;
+			message += "' type='text' class='form-control'></td></tr>";
+		  }
+		  
+		  document.getElementById("table").innerHTML = message;
+		}
+		
+		function validateForm1()
+		{
+				if (document.forms["workflow1"]["username"].value == null ||
+						document.forms["workflow1"]["username"].value == "" ||
+						document.forms["workflow1"]["password"].value == null ||
+						document.forms["workflow1"]["password"].value == "" ||
+						document.forms["workflow1"]["file"].value == null ||
+						document.forms["workflow1"]["file"].value == "")
+				{
+					document.getElementById("error").innerHTML = 
+						"<div class=\"alert alert-dismissible alert-danger\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">×</button>Please enter Spectrum username and password, and select an index CSV file.</div>";
+					return false;
+				}
+				else
+					return true;
+			}
+		
+		function validateForm2()
+		{
+				var isUserPasswd = true;
+				var isTableEmpty = true;
+				
+				if (document.forms["workflow2"]["usernameManual"].value == null ||
+						document.forms["workflow2"]["usernameManual"].value == "" ||
+						document.forms["workflow2"]["passwordManual"].value == null ||
+						document.forms["workflow2"]["passwordManual"].value == "")
+				{
+					isUserPasswd = false;
+				}
+				
+				for (var i = 1; i < totalLines; i++)
+				{
+					//ok to proceed as long as we have at least one image id
+					if (document.getElementById("link" + i).value != "" &&
+							document.getElementById("link" + i).value != null )
+					{
+						isTableEmpty = false;
+						break;
+					}
+				}
+				
+				if (isUserPasswd == false)
+				{
+					document.getElementById("error2").innerHTML = 
+						"<div class=\"alert alert-dismissible alert-danger\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">×</button>Please enter Spectrum username and password.</div>";
+					return false;
+				}
+				
+				if (isTableEmpty == true)
+				{
+					document.getElementById("error2").innerHTML = 
+						"<div class=\"alert alert-dismissible alert-danger\"><button type=\"button\" class=\"close\" data-dismiss=\"alert\">×</button>Please enter at least one SVS file link.</div>";
+					return false;
+				}
+				
+				return true;
+			}
+			
+		createTable();
+	</script>
+  </body>
+</html>
