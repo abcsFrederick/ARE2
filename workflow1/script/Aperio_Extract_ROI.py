@@ -17,6 +17,8 @@ from ..models import LayerAndROIs
 #import numpy
 #from skimage.draw import polygon
 
+# For running on HPC for large crop later
+cropSizeLimit= 100000 * 10000000
 
 def cropROI(slide, location, size, description, output_path, path):
     print('reading ROI...')
@@ -70,7 +72,7 @@ def process_single_image(in_file, prefix, postfix, output_folder, svs_path,
                                             roi_index) 
         report_file.write('%s,%s,%s\n' % (image_id, layer_name, roi_name))
 
-        if size[0] * size[0] > 10000 * 10000:
+        if size[0] * size[0] > cropSizeLimit:
             print_args = (image_id,) + size + bounding_box
             info = '{},{},{},{},{}\n'.format(prefix, postfix, svs_path, image_id,','.join(roi))
             slurm_file.write(info)

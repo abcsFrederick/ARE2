@@ -1,7 +1,10 @@
 import axios from '@/utils/http';
 // import $ from 'jquery';
+
+const sq = process.env.VUE_APP_BACKEND_URL;
+
 const base = {    
-    sq: 'http://localhost:8000',
+    sq: sq,
     // sq: 'https://fsivgl-img01p.ncifcrf.gov/api/v1',
     bd: 'http://xxxxx22222.com/api'
 }

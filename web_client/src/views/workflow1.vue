@@ -49,7 +49,7 @@
         <v-toolbar-title>Aperio Image ROI Extraction Workflow
           <v-btn 
             icon
-            href="mailto:liuy5@mail.nih.gov; miaot2@nih.gov?Subject=Aperio%20Workflow"
+            href="mailto:miaot2@nih.gov?Subject=Aperio%20Workflow"
           >
             <v-icon>mdi-email</v-icon>
           </v-btn>
@@ -181,6 +181,9 @@
 <script>
 import "blueimp-gallery/css/blueimp-gallery.min.css";
 import Gallery from "blueimp-gallery/js/blueimp-gallery.min.js";
+
+const ws = process.env.VUE_APP_WEBSOCKET_URL;
+
 export default {
   name: 'home',
   props: ['id'],
@@ -257,12 +260,15 @@ export default {
     this.referenceId = this.$props['id'];
     // this.render();
     let self = this;
+    // const reportSocket = new WebSocket(
+    //     'wss://'
+    //     + window.location.host
+    //     + '/api/w1/message/' + this.$props['id'] + '/'
+    // );
+    console.log(ws)
     const reportSocket = new WebSocket(
-        'wss://'
-        + window.location.host
-        + '/api/w1/message/' + this.$props['id'] + '/'
+      ws  + '/' + this.$props['id'] + '/'
     );
-
     reportSocket.onmessage = function(e) {
       self.reports.push(e.data);
       if (e.data == 'Finish') {
