@@ -10,4 +10,4 @@ openslide-python
 asgiref
 redis
 gunicorn
-uvicorn
+uvicorn[standard]
