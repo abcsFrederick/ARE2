@@ -14,7 +14,7 @@ from pathlib import Path
 import environ
 
 env = environ.Env()
-if os.path.exist('.env'):
+if os.path.exists('.env'):
     environ.Env.read_env()
 else:
     environ.Env.read_env(os.path.join('/var/www/html', '.env'))
