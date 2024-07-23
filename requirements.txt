@@ -4,7 +4,7 @@ django-environ
 celery
 channels-redis
 channels[daphne]
-pycurl
+#pycurl
 pillow
 openslide-python
 asgiref
