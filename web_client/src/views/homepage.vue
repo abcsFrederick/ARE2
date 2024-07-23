@@ -12,7 +12,7 @@
         <v-toolbar-title>Aperio Image ROI Extraction Workflow
           <v-btn 
             icon
-            href="mailto:liuy5@mail.nih.gov; miaot2@nih.gov?Subject=Aperio%20Workflow"
+            href="mailto:miaot2@nih.gov?Subject=Aperio%20Workflow"
           >
             <v-icon>mdi-email</v-icon>
           </v-btn>
@@ -149,7 +149,7 @@
 export default {
   name: 'home',
   data: () => ({
-    fileToUpload: '',
+    fileToUpload: [],
     dialog: false,
     username: '',
     password: '',

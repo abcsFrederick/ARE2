@@ -3,7 +3,7 @@ django-cors-headers
 django-environ
 celery
 channels-redis
-channels
+channels[daphne]
 pycurl
 pillow
 openslide-python
