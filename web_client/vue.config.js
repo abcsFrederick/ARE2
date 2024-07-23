@@ -9,5 +9,5 @@ module.exports = {
       proxy: "http://localhost:8000"
     },
   },
-  publicPath: '/'
+  publicPath: '/ARE2/'
 }
