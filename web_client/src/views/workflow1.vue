@@ -97,7 +97,7 @@
                       <v-btn 
                         color="primary"
                       >
-                        <a class="download" :href=link>Download ROIs({{size}})</a>
+                        <a class="download" :href=sanitize(link)>Download ROIs({{size}})</a>
                       </v-btn>
                     </td>
                     <td class="text-center">{{referenceId}}</td>
@@ -181,6 +181,7 @@
 <script>
 import "blueimp-gallery/css/blueimp-gallery.min.css";
 import Gallery from "blueimp-gallery/js/blueimp-gallery.min.js";
+import { sanitizeUrl } from '@braintree/sanitize-url'
 
 const ws = process.env.VUE_APP_WEBSOCKET_URL;
 
