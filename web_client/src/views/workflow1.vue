@@ -97,7 +97,7 @@
                       <v-btn 
                         color="primary"
                       >
-                        <a class="download" :href=sanitize(link)>Download ROIs({{size}})</a>
+                        <a class="download" :href="sanitize(link)?sanitize(link):''">Download ROIs({{size}})</a>
                       </v-btn>
                     </td>
                     <td class="text-center">{{referenceId}}</td>
