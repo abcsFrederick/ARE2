@@ -97,7 +97,7 @@
                       <v-btn 
                         color="primary"
                       >
-                        <a class="download" :href="sanitize(link)?sanitize(link):''">Download ROIs({{size}})</a>
+                        <a class="download" :href=link>Download ROIs({{size}})</a>
                       </v-btn>
                     </td>
                     <td class="text-center">{{referenceId}}</td>
@@ -181,7 +181,6 @@
 <script>
 import "blueimp-gallery/css/blueimp-gallery.min.css";
 import Gallery from "blueimp-gallery/js/blueimp-gallery.min.js";
-import { sanitizeUrl } from '@braintree/sanitize-url'
 
 const ws = process.env.VUE_APP_WEBSOCKET_URL;
 
@@ -226,15 +225,14 @@ export default {
     year: new Date().getFullYear()
   }),
   methods: {
-    sanitizeUrl,
     redirect(url) {
       window.location.href = url
     },
     render() {
       this.processing = false;
       this.$api.base.record(this.$props['id']).then((e) => {
-          this.link = sanitizeUrl(e.data.link);
-          this.lineFileLink = sanitizeUrl(e.data.lineFileLink);
+          this.link = e.data.link;
+          this.lineFileLink = e.data.lineFileLink;
           this.size = e.data.size;
           this.numberOfRoIs = e.data.numberOfRoIs;
           this.processTime = e.data.numberOfRoIs.processTime;
