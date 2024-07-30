@@ -50,6 +50,8 @@ def postProcess(outputFolder, statusFilePath, id):
         imgFolderPath = os.path.join(outputFolder, folder)
         if os.path.isdir(imgFolderPath):
             tifFilePaths =  os.path.join(imgFolderPath, '*.tif')
+            print('run the command line:')
+            print('gm mogrify -profile profile.icc ', tifFilePaths)
             subprocess.run(["gm","mogrify", "-profile", "profile.icc", tifFilePaths])
 
 
@@ -76,15 +78,13 @@ def prepareInputs(lines, outputFile, username, password, workFolder, statusFileP
     
     colIndexExtID = -1
 
-    try:
-        colIndexExtID = headers.index("Ext ID");
-        colIndexIndexTissue = headers.index("Tissue");
-        colIndexTissueComment = headers.index("Tissue Comment");
-        colIndexProbe = headers.index("Tgt1");
-        colIndexProbe1 = headers.index("Tgt2");
-        colIndexProbe2 = headers.index("Tgt3");
-    except Exception:
-        pass
+    colIndexExtID = headers.index("Ext ID") if "Ext ID" in headers else -1;
+    colIndexTissue = headers.index("Tissue") if "Tissue" in headers else -1;
+    colIndexTissueComment = headers.index("Tissue Comment") if "Tissue Comment" in headers else -1;
+    colIndexProbe = headers.index("Tgt1") if "Tgt1" in headers else -1;
+    colIndexProbe1 = headers.index("Tgt2") if "Tgt2" in headers else -1;
+    colIndexProbe2 = headers.index("Tgt3") if "Tgt3" in headers else -1;
+
     tempArray = []
     for line in lines[1:]:
         if line[colIndexLoc] == '':
@@ -113,24 +113,23 @@ def prepareInputs(lines, outputFile, username, password, workFolder, statusFileP
         tissueComment = '-'
         probe = '-'
         imageID = '-'
-        if 'colIndexTissue' in locals():
+        if locals()['colIndexTissue'] >= 0:
             tissue = getSafeInputValue(line[colIndexTissue])
-        if 'colIndexTissueComment' in locals():
+        if locals()['colIndexTissueComment'] >= 0:
             tissueComment = getSafeInputValue(line[colIndexTissueComment])
-        if 'colIndexProbe' in locals():
+        if locals()['colIndexProbe'] >= 0:
             probe = getSafeInputValue(line[colIndexProbe])
-        if 'colIndexProbe1' in locals():
+        if locals()['colIndexProbe1'] >= 0:
             if probe == '-':
                 probe = getSafeInputValue(line[colIndexProbe1])
             else:
                 probe += getSafeInputValue(line[colIndexProbe1])
-        if 'colIndexProbe2' in locals():
+        if locals()['colIndexProbe2'] >= 0:
             if probe == '-':
                 probe = getSafeInputValue(line[colIndexProbe2])
             else:
                 probe += getSafeInputValue(line[colIndexProbe2])
-        if 'colIndexImageID' in locals():
-
+        if locals()['colIndexImageID'] >= 0:
             imageID = getSafeInputValue(line[colIndexImageID])
 
         # create prefix1
@@ -148,7 +147,7 @@ def prepareInputs(lines, outputFile, username, password, workFolder, statusFileP
         if probe != '-':
             namePrefix2 = probe
         if imageID != '-':
-            namePrefix2 = namePrefix1 + '_' + imageID
+            namePrefix2 = namePrefix2 + '_' + imageID
 
         # save to index file and get annotation
         # only when we have valid imageID and location
@@ -197,6 +196,7 @@ def prepareJPGs(outputFolder, statusFilePath, id, thumbnail=False):
                 for filename in glob.glob(tifFilePaths):
                     os.remove(filename)
 def parseXML(fileName):
+    print(';;;;;;;;;;;;')
     print(fileName)
     xml_file = ET.parse(fileName)
     xml_root = xml_file.getroot()
@@ -279,15 +279,16 @@ def processLines(self, workFolder, statusFilePath, lineFilePath, id):
                         annArray.append(ann)
             lineAnnArray.append(annArray)
 
-    lineAnnfile = open(lineFilePath, 'w')
-    lineAnnfile.writelines('Annotation line length data\n\n')
-    lineAnnfile.writelines('Specimen,Layer,Total Length(um)\n')
-    for line in lineAnnArray:
-        total = 0
-        for length in line[2:]:
-            total += float(length)
-        newLine = [line[0], line[1], str(total)]
-        lineAnnfile.writelines(','.join(newLine) + '\n')
+    if len(lineAnnArray):
+        lineAnnfile = open(lineFilePath, 'w')
+        lineAnnfile.writelines('Annotation line length data\n\n')
+        lineAnnfile.writelines('Specimen,Layer,Total Length(um)\n')
+        for line in lineAnnArray:
+            total = 0
+            for length in line[2:]:
+                total += float(length)
+            newLine = [line[0], line[1], str(total)]
+            lineAnnfile.writelines(','.join(newLine) + '\n')
 
 
 def processROIs(self, workFolder, outputFolder, statusFilePath, id, taskDB):
@@ -421,6 +422,13 @@ def start_processing(self, file_path, username, password, id):
     lineFileName = outputName + '_LineAnnotations_' + current_time + '.csv'
     lineFilePath =  os.path.join(workFolder, lineFileName)
     processLines(self, workFolder, statusFilePath, lineFilePath, id)
+
+    print('1231!@#!@#!')
+    print(os.path.exists(lineFilePath))
+    if os.path.exists(lineFilePath):
+        lineFileLink = lineFilePath.replace(settings.GLOBAL_SETTINGS['HOSTDIR'], '')
+    else:
+        lineFileLink = ''
     # check for slurm task
     # move or combine slurm output to local
 
@@ -430,8 +438,11 @@ def start_processing(self, file_path, username, password, id):
 
     zipFileName = outputName + '_ROIs_' + current_time + '.zip'
     zipFilePath =  os.path.join(workFolder, zipFileName)
-    subprocess.run(["zip","-r", "-0", "-j", zipFilePath, outputFolder])
 
+    os.chdir(outputFolder)
+
+    subprocess.run(["zip", "-r", "-0", zipFilePath, "."])
+    # subprocess.run(["zip","-r", "-0", "-j", zipFilePath, outputFolder])
     file_size = os.path.getsize(zipFilePath)
     if file_size < 0.001:
         file_size /= 1024
@@ -451,7 +462,7 @@ def start_processing(self, file_path, username, password, id):
     # prepareJPGs(thumbnailFolder, statusFilePath, id, thumbnail=True)
     async_to_sync(channel_layer.group_send)(id, {'type': 'send_reports', 'text': 'Finish' })
     Celery_task.objects.filter(taskId=id).update(link=zipFilePath.replace(settings.GLOBAL_SETTINGS['HOSTDIR'],''),
-                                                 lineFileLink=lineFilePath.replace(settings.GLOBAL_SETTINGS['HOSTDIR'],''),
+                                                 lineFileLink=lineFileLink,
                                                  size=str(int(file_size)) + unit,
                                                  numberOfRoIs=str(numberOfRoIs),
                                                  processTime=endTime - startTime)
