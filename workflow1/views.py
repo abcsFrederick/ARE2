@@ -23,7 +23,7 @@ from channels.layers import get_channel_layer
 from .tasks import start_processing, sleep30
 
 # Create your views here.
-@csrf_exempt
+# @csrf_exempt
 def index(request):
     if request.method == 'POST':
         progress = True
@@ -49,7 +49,7 @@ def index(request):
 
 from celery.result import AsyncResult
 import asyncio
-@csrf_exempt
+# @csrf_exempt
 def test(request):
     # celery_id = request.GET.get("celery_id");
     # res = AsyncResult(celery_id)
@@ -101,7 +101,7 @@ class reportConsumer(WebsocketConsumer):
 
 from .models import Celery_task, Images, LayerAndROIs
 
-@csrf_exempt
+# @csrf_exempt
 def celery_task(request):
     if request.method == 'GET':
         taskId = request.GET.get("taskId");
@@ -120,7 +120,7 @@ def celery_task(request):
         return JsonResponse(results, safe=False)
 
 
-@csrf_exempt
+# @csrf_exempt
 def task_images(request):
     if request.method == 'GET':
         taskId = request.GET.get("taskId");
@@ -135,7 +135,7 @@ def task_images(request):
 
         return JsonResponse(images, safe=False)
 
-@csrf_exempt
+# @csrf_exempt
 def image_layers_rois(request):
     if request.method == 'GET':
         image_index = request.GET.get("imageIndex")
