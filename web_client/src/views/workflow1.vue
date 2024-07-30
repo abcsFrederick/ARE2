@@ -232,8 +232,8 @@ export default {
     render() {
       this.processing = false;
       this.$api.base.record(this.$props['id']).then((e) => {
-          this.link = e.data.link;
-          this.lineFileLink = e.data.lineFileLink;
+          this.link = sanitizeUrl(e.data.link);
+          this.lineFileLink = sanitizeUrl(e.data.lineFileLink);
           this.size = e.data.size;
           this.numberOfRoIs = e.data.numberOfRoIs;
           this.processTime = e.data.numberOfRoIs.processTime;
